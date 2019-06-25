@@ -1,7 +1,7 @@
 from shared import *
 import Physics
 
-class Model(object):
+class Model:
 
     def __init__(self, textures):
 
@@ -30,23 +30,18 @@ class Model(object):
         # _show_block() and _hide_block() calls
         self.queue = deque()
 
-        self._initialize()
+        self._initialize_world()
 
-    def _initialize(self):
-        """ Initialize the world by placing all the blocks.
-
-        """
+    def _initialize_world(self):
         n = 80  # 1/2 width and height of world
         s = 1  # step size
         y = 0  # initial y height
         for x in range(-n, n + 1, s):
             for z in range(-n, n + 1, s):
                 # create a layer stone an grass everywhere.
-                self.add_block((x, y - 2, z), self.textures.grass, immediate=False)
-                self.add_block((x, y - 3, z), self.textures.stone, immediate=False)
 
-                for i in range(2, len(self.textures.resource_levels)):
-                    self.add_block((x, y - i, z), self.textures.resource_levels, immediate=False)
+                for height_index in range(2, len(self.textures.resource_levels)+2):
+                    self.add_block((x, y - height_index, z), self.textures.resource_levels[height_index-2], immediate=False)
 
                 if x in (-n, n) or z in (-n, n):
                     # create outer walls.
@@ -73,21 +68,7 @@ class Model(object):
                         self.add_block((x, y, z), t, immediate=False)
                 s -= d  # decrement side lenth so hills taper off
 
-    def hit_test(self, position, vector, max_distance=8):
-        """ Line of sight search from current position. If a block is
-        intersected it is returned, along with the block previously in the line
-        of sight. If no block is found, return None, None.
-
-        Parameters
-        ----------
-        position : tuple of len 3
-            The (x, y, z) position to check visibility from.
-        vector : tuple of len 3
-            The line of sight vector.
-        max_distance : int
-            How many blocks away to search for a hit.
-
-        """
+    def is_block_hit(self, position, vector, max_distance=8):
         m = 8
         x, y, z = position
         dx, dy, dz = vector
@@ -100,11 +81,7 @@ class Model(object):
             x, y, z = x + dx / m, y + dy / m, z + dz / m
         return None, None
 
-    def exposed(self, position):
-        """ Returns False is given `position` is surrounded on all 6 sides by
-        blocks, True otherwise.
-
-        """
+    def is_block_exposed(self, position):
         x, y, z = position
         for dx, dy, dz in self.textures.faces:
             if (x + dx, y + dy, z + dz) not in self.world:
@@ -112,59 +89,30 @@ class Model(object):
         return False
 
     def add_block(self, position, texture, immediate=True):
-        """ Add a block with the given `texture` and `position` to the world.
-
-        Parameters
-        ----------
-        position : tuple of len 3
-            The (x, y, z) position of the block to add.
-        texture : list of len 3
-            The coordinates of the texture squares. Use `tex_coords()` to
-            generate.
-        immediate : bool
-            Whether or not to draw the block immediately.
-
-        """
         if position in self.world:
             self.remove_block(position, immediate)
         self.world[position] = texture
         self.sectors.setdefault(Physics.get_sector(position), []).append(position)
         if immediate:
-            if self.exposed(position):
+            if self.is_block_exposed(position):
                 self.show_block(position)
-            self.check_neighbors(position)
+            self.check_neighbors_loaded(position)
 
     def remove_block(self, position, immediate=True):
-        """ Remove the block at the given `position`.
-
-        Parameters
-        ----------
-        position : tuple of len 3
-            The (x, y, z) position of the block to remove.
-        immediate : bool
-            Whether or not to immediately remove block from canvas.
-
-        """
         del self.world[position]
         self.sectors[Physics.get_sector(position)].remove(position)
         if immediate:
             if position in self.shown:
                 self.hide_block(position)
-            self.check_neighbors(position)
+            self.check_neighbors_loaded(position)
 
-    def check_neighbors(self, position):
-        """ Check all blocks surrounding `position` and ensure their visual
-        state is current. This means hiding blocks that are not exposed and
-        ensuring that all exposed blocks are shown. Usually used after a block
-        is added or removed.
-
-        """
+    def check_neighbors_loaded(self, position):
         x, y, z = position
         for dx, dy, dz in self.textures.faces:
             key = (x + dx, y + dy, z + dz)
             if key not in self.world:
                 continue
-            if self.exposed(key):
+            if self.is_block_exposed(key):
                 if key not in self.shown:
                     self.show_block(key)
             else:
@@ -172,93 +120,43 @@ class Model(object):
                     self.hide_block(key)
 
     def show_block(self, position, immediate=True):
-        """ Show the block at the given `position`. This method assumes the
-        block has already been added with add_block()
-
-        Parameters
-        ----------
-        position : tuple of len 3
-            The (x, y, z) position of the block to show.
-        immediate : bool
-            Whether or not to show the block immediately.
-
-        """
         texture = self.world[position]
         self.shown[position] = texture
         if immediate:
             self._show_block(position, texture)
         else:
-            self._enqueue(self._show_block, position, texture)
+            self.add_to_function_queue(self._show_block, position, texture)
 
     def _show_block(self, position, texture):
-        """ Private implementation of the `show_block()` method.
-
-        Parameters
-        ----------
-        position : tuple of len 3
-            The (x, y, z) position of the block to show.
-        texture : list of len 3
-            The coordinates of the texture squares. Use `tex_coords()` to
-            generate.
-
-        """
         x, y, z = position
         vertex_data = self.textures.get_cube_vertices(x, y, z, 0.5)
         texture_data = list(texture)
         # create vertex list
-        # FIXME Maybe `add_indexed()` should be used instead
         self._shown[position] = self.batch.add(24, GL_QUADS, self.group,
             ('v3f/static', vertex_data),
             ('t2f/static', texture_data))
 
     def hide_block(self, position, immediate=True):
-        """ Hide the block at the given `position`. Hiding does not remove the
-        block from the world.
-
-        Parameters
-        ----------
-        position : tuple of len 3
-            The (x, y, z) position of the block to hide.
-        immediate : bool
-            Whether or not to immediately remove the block from the canvas.
-
-        """
         self.shown.pop(position)
         if immediate:
             self._hide_block(position)
         else:
-            self._enqueue(self._hide_block, position)
+            self.add_to_function_queue(self._hide_block, position)
 
     def _hide_block(self, position):
-        """ Private implementation of the 'hide_block()` method.
-
-        """
         self._shown.pop(position).delete()
 
     def show_sector(self, sector):
-        """ Ensure all blocks in the given sector that should be shown are
-        drawn to the canvas.
-
-        """
         for position in self.sectors.get(sector, []):
-            if position not in self.shown and self.exposed(position):
+            if position not in self.shown and self.is_block_exposed(position):
                 self.show_block(position, False)
 
     def hide_sector(self, sector):
-        """ Ensure all blocks in the given sector that should be hidden are
-        removed from the canvas.
-
-        """
         for position in self.sectors.get(sector, []):
             if position in self.shown:
                 self.hide_block(position, False)
 
     def change_sectors(self, before, after):
-        """ Move from sector `before` to sector `after`. A sector is a
-        contiguous x, y sub-region of world. Sectors are used to speed up
-        world rendering.
-
-        """
         before_set = set()
         after_set = set()
         pad = 4
@@ -280,33 +178,18 @@ class Model(object):
         for sector in hide:
             self.hide_sector(sector)
 
-    def _enqueue(self, func, *args):
-        """ Add `func` to the internal queue.
-
-        """
+    def add_to_function_queue(self, func, *args):
         self.queue.append((func, args))
 
-    def _dequeue(self):
-        """ Pop the top function from the internal queue and call it.
-
-        """
+    def remove_from_function_queue(self):
         func, args = self.queue.popleft()
         func(*args)
 
-    def process_queue(self):
-        """ Process the entire queue while taking periodic breaks. This allows
-        the game loop to run smoothly. The queue contains calls to
-        _show_block() and _hide_block() so this method should be called if
-        add_block() or remove_block() was called with immediate=False
-
-        """
-        start = time.clock()
+    def process_function_queue(self):
+        start = time.process_time() # time.clock() deprecated
         while self.queue and time.clock() - start < 1.0 / TICKS_PER_SEC:
-            self._dequeue()
+            self.remove_from_function_queue()
 
     def process_entire_queue(self):
-        """ Process the entire queue with no breaks.
-
-        """
         while self.queue:
-            self._dequeue()
+            self.remove_from_function_queue()
