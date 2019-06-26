@@ -15,8 +15,8 @@ def setup_fog():
     glFogi(GL_FOG_MODE, GL_LINEAR)
     # How close and far away fog starts and ends. The closer the start and end,
     # the denser the fog in the fog range.
-    glFogf(GL_FOG_START, 20.0)
-    glFogf(GL_FOG_END, 60.0)
+    glFogf(GL_FOG_START, FOG_AREA[0])
+    glFogf(GL_FOG_END, FOG_AREA[1])
 
 
 def setup():

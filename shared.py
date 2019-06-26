@@ -23,6 +23,8 @@ MAX_JUMP_HEIGHT = 1.0 # About the height of a block.
 JUMP_SPEED = math.sqrt(2 * GRAVITY * MAX_JUMP_HEIGHT)
 TERMINAL_VELOCITY = 50
 
+FOG_AREA = [100,110]#[20, 60] # start, end
+
 WORLD_SIZE = 160
 
 HILL_DISPERSION = 100 # up to 100, %
