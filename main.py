@@ -4,9 +4,6 @@ import Textures
 
 
 def setup_fog():
-    """ Configure the OpenGL fog properties.
-
-    """
     # Enable fog. Fog "blends a fog color with each rasterized pixel fragment's
     # post-texturing color."
     glEnable(GL_FOG)
@@ -23,9 +20,6 @@ def setup_fog():
 
 
 def setup():
-    """ Basic OpenGL configuration.
-
-    """
     # Set the color of "clear", i.e. the sky, in rgba.
     glClearColor(0.5, 0.69, 1.0, 1)
     # Enable culling (not rendering) of back-facing facets -- facets that aren't
@@ -42,7 +36,7 @@ def setup():
 
 
 def main():
-    textures = Textures.Textures(TEXTURE_PATH)
+    textures = Textures.Textures(os.path.join(TEXTURES_FOLDER, TEXTURE))
     window = Game.Game(inventory=textures.inventory, textures=textures, width=800, height=600, caption='Pyglet', resizable=True)
     # Hide the mouse cursor and prevent the mouse from leaving the window.
     window.set_exclusive_mouse(True)

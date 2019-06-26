@@ -11,7 +11,7 @@ class Model:
         self.batch = pyglet.graphics.Batch()
 
         # A TextureGroup manages an OpenGL texture.
-        self.group = TextureGroup(image.load(TEXTURE_PATH).get_texture())
+        self.group = TextureGroup(image.load(self.textures.texture_path).get_texture())
 
         # A mapping from position to the texture of the block at that position.
         # This defines all the blocks that are currently in the world.
@@ -30,10 +30,13 @@ class Model:
         # _show_block() and _hide_block() calls
         self.queue = deque()
 
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
         self._initialize_world()
 
     def _initialize_world(self):
-        n = 80  # 1/2 width and height of world
+        n = WORLD_SIZE//2  # 1/2 width and height of world
         s = 1  # step size
         y = 0  # initial y height
         for x in range(-n, n + 1, s):
@@ -46,11 +49,11 @@ class Model:
                 if x in (-n, n) or z in (-n, n):
                     # create outer walls.
                     for dy in range(-2, 3):
-                        self.add_block((x, y + dy, z), self.textures.stone, immediate=False)
+                        self.add_block((x, y + dy, z), self.textures.wall_resource.texture, immediate=False)
 
         # generate the hills randomly
         o = n - 10
-        for _ in range(120):
+        for _ in range(WORLD_SIZE//(101-HILL_DISPERSION)):
             a = random.randint(-o, o)  # x position of the hill
             b = random.randint(-o, o)  # z position of the hill
             c = -1  # base of the hill
@@ -130,7 +133,10 @@ class Model:
     def _show_block(self, position, texture):
         x, y, z = position
         vertex_data = self.textures.get_cube_vertices(x, y, z, 0.5)
-        texture_data = list(texture)
+        if type(texture) == list:
+            texture_data = list(texture)
+        else:
+            texture_data = texture.texture
         # create vertex list
         self._shown[position] = self.batch.add(24, GL_QUADS, self.group,
             ('v3f/static', vertex_data),

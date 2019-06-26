@@ -1,0 +1,49 @@
+{
+  "dirt": {
+    "texture_coords": [
+        [2,15],
+        [2, 15],
+        [3, 15]
+    ]
+  },
+
+  "sand": {
+    "texture_coords": [
+      [2,14],
+      [2,14],
+      [2,14]
+    ]
+  },
+
+  "brick": {
+    "texture_coords": [
+      [7,15],
+      [7,15],
+      [7,15]
+    ]
+  },
+
+  "stone": {
+    "texture_coords": [
+      [1,15],
+      [1,15],
+      [1,15]
+    ]
+  },
+
+  "andesite": {
+    "texture_coords": [
+      [0,15],
+      [0,15],
+      [0,15]
+    ]
+  },
+
+  "cactus": {
+    "texture_coords": [
+      [5,11],
+      [5,11],
+      [6,11]
+    ]
+  }
+}

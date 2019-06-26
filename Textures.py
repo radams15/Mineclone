@@ -1,19 +1,30 @@
+import json
+from Texture import Texture
+from shared import TEXTURE_CONFIG_FILE
 
 class Textures:
     def __init__(self, texture_path):
         self.texture_path = texture_path
-        self.grass = self.get_texture_coordinates((1, 0), (0, 1), (0, 0))
-        self.sand = self.get_texture_coordinates((1, 1), (1, 1), (1, 1))
-        self.brick = self.get_texture_coordinates((2, 0), (2, 0), (2, 0))
-        self.stone = self.get_texture_coordinates((2, 1), (2, 1), (2, 1))
 
-        self.world_resources = [self.brick, self.stone]#[self.grass, self.sand]
+        self.texture_size = 16 # 16*16 texture size
 
-        self.resource_levels = [self.grass, self.stone]
+        self.textures = {}
+
+        for texture in json.load(open(TEXTURE_CONFIG_FILE)).items():
+            name = texture[0]
+            texture_coords = texture[1]["texture_coords"]
+            top,bottom,side = texture_coords
+            self.textures[name] = Texture(self.get_texture_coordinates(top, bottom, side))
+
+        self.world_resources = list(self.textures.values())#[self.textures["sand"], self.textures["brick"], self.textures["stone"]]
+
+        self.resource_levels = [self.textures["dirt"], self.textures["stone"]]
+
+        self.wall_resource = self.textures["stone"]
 
         self.indestructible_resources = []
 
-        self.inventory = [self.grass, self.sand, self.stone, self.brick]
+        self.inventory = [self.textures["sand"], self.textures["stone"], self.textures["brick"]]
 
         self.faces = [
             (0, 1, 0),
@@ -35,19 +46,13 @@ class Textures:
             x + n, y - n, z - n, x - n, y - n, z - n, x - n, y + n, z - n, x + n, y + n, z - n,  # back
         ]
 
-    def get_texture_bounding_vertices(self, x, y, n=4):
-        """ Return the bounding vertices of the texture square.
-
-        """
-        m = 1.0 / n
+    def get_texture_bounding_vertices(self, x, y):
+        m = 1 / self.texture_size
         dx = x * m
         dy = y * m
         return dx, dy, dx + m, dy, dx + m, dy + m, dx, dy + m
 
     def get_texture_coordinates(self, top, bottom, side):
-        """ Return a list of the texture squares for the top, bottom and side.
-
-        """
         top = self.get_texture_bounding_vertices(*top)
         bottom = self.get_texture_bounding_vertices(*bottom)
         side = self.get_texture_bounding_vertices(*side)
