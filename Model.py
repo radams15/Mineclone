@@ -71,7 +71,7 @@ class Model:
                         self.add_block((x, y, z), t, immediate=False)
                 s -= d  # decrement side lenth so hills taper off
 
-    def is_block_hit(self, position, vector, max_distance=8):
+    def is_block_hit(self, position, vector, max_distance=HIT_DISTANCE):
         m = 8
         x, y, z = position
         dx, dy, dz = vector

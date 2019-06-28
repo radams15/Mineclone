@@ -5,12 +5,15 @@ import Physics
 
 class Game(pyglet.window.Window):
 
-    def __init__(self, inventory, textures, *args, **kwargs):
+    def __init__(self, textures, *args, **kwargs):
         super(Game, self).__init__(*args, **kwargs)
 
+        self.hp = MAX_HP
         # Whether or not the window exclusively captures the mouse.
         self.exclusive = False
         self.textures = textures
+
+        self.last_damaged = time.time()
 
         # When flying gravity has no effect and speed is increased.
         self.flying = False
@@ -45,10 +48,10 @@ class Game(pyglet.window.Window):
         self.dy = 0
 
         # A list of blocks the player can place. Hit num keys to cycle.
-        self.inventory = inventory
+        self.inventory = {}
 
         # The current block the user can place. Hit num keys to cycle.
-        self.block = self.inventory[0]
+        self.block = None
 
         # Convenience list of num keys.
         self.num_keys = [
@@ -67,6 +70,17 @@ class Game(pyglet.window.Window):
         # This call schedules the `update()` method to be called
         # TICKS_PER_SEC. This is the main game event loop.
         pyglet.clock.schedule_interval(self.update, 1.0 / TICKS_PER_SEC)
+
+    def check_stats(self):
+        print(self.hp)
+        if self.hp <= 0:
+            print("DEAD")
+            #exit()
+            self.hp = MAX_HP
+
+    def damage(self, amount):
+        self.hp -= amount
+        self.check_stats()
 
     def set_exclusive_mouse(self, exclusive):
         super(Game, self).set_exclusive_mouse(exclusive)
@@ -176,7 +190,61 @@ class Game(pyglet.window.Window):
                         # falling / rising.
                         self.dy = 0
                     break
+
+        below_block_pos=above_block_pos=left_block_pos=right_block_pos=None
+
+        below_block_pos = p.copy()
+        below_block_pos[1] -= 1
+        below_block_pos = [math.floor(x) for x in below_block_pos]
+        if below_block_pos:
+            below_block = self.get_texture(tuple(below_block_pos))
+
+        left_block_pos = p.copy()
+        left_block_pos[0] -= 1
+        left_block_pos = [math.floor(x) for x in left_block_pos]
+        if left_block_pos:
+            left_block = self.get_texture(tuple(left_block_pos))
+
+
+        right_block_pos = p.copy()
+        right_block_pos[1] += 1
+        right_block_pos = [math.floor(x) for x in right_block_pos]
+        if right_block_pos:
+            right_block = self.get_texture(tuple(right_block_pos))
+
+
+        above_block_pos = p.copy()
+        above_block_pos[0] += 1
+        above_block_pos = [math.floor(x) for x in above_block_pos]
+        if above_block_pos:
+            above_block = self.get_texture(tuple(above_block_pos))
+
+        #print(f"Right: {right_block}, Left: {left_block}, Above: {above_block}, Below: {below_block}")
+
+        self.collide(below_block)
+        self.collide(above_block)
+        self.collide(right_block)
+        self.collide(left_block)
+
+        for block in [b for b in [below_block, above_block, right_block, left_block] if b is not None]:
+            self.collide(block)
+
         return tuple(p)
+
+    def get_texture(self, position):
+        if position in self.model.world:
+            texture = self.model.world[position]
+            if type(texture) == Texture.Texture:
+                return texture
+
+    def collide(self, block:Texture.Texture):
+        if time.time() < self.last_damaged + DAMAGE_SLEEP:
+            return
+        if not block:
+            return
+        if block.damage:
+            self.damage(block.damage)
+            self.last_damaged = time.time()
 
     def on_mouse_press(self, x, y, button, modifiers):
         if self.exclusive:
@@ -186,11 +254,16 @@ class Game(pyglet.window.Window):
                     ((button == mouse.LEFT) and (modifiers & key.MOD_CTRL)):
                 # ON OSX, control + left click = right click.
                 if previous:
-                    self.model.add_block(previous, self.block)
+                    if self.block:
+                        self.model.add_block(previous, self.block)
             elif button == pyglet.window.mouse.LEFT and block:
                 texture = self.model.world[block]
                 if texture not in self.textures.indestructible_resources:
                     self.model.remove_block(block)
+                    if texture not in self.inventory:
+                        self.inventory[texture] = 0
+                    self.inventory[texture] += 1
+                    print(self.inventory)
         else:
             self.set_exclusive_mouse(True)
 
@@ -220,7 +293,12 @@ class Game(pyglet.window.Window):
             self.flying = not self.flying
         elif symbol in self.num_keys:
             index = (symbol - self.num_keys[0]) % len(self.inventory)
-            self.block = self.inventory[index]
+            texture = list(self.inventory.keys())[index]
+            self.inventory[texture] -= 1
+            if self.inventory[texture] == 0:
+                del self.inventory[texture]
+                self.block = None
+            self.block = texture
 
     def on_key_release(self, symbol, modifiers):
         if symbol == key.W:
@@ -294,8 +372,8 @@ class Game(pyglet.window.Window):
 
     def draw_stats(self):
         x, y, z = self.position
-        self.label.text = '%02d     (%.2f, %.2f, %.2f)'% (
-            pyglet.clock.get_fps(), x, y, z)
+        self.label.text = 'FPS: %02d     HP: %d'% (
+            pyglet.clock.get_fps(), self.hp)
         self.label.draw()
 
     def draw_reticle(self):

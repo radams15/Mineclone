@@ -37,7 +37,7 @@ def setup():
 
 def main():
     textures = Textures.Textures(os.path.join(TEXTURES_FOLDER, TEXTURE))
-    window = Game.Game(inventory=textures.inventory, textures=textures, width=800, height=600, caption='Pyglet', resizable=True)
+    window = Game.Game(textures=textures, width=800, height=600, caption='Pyglet', resizable=True)
     # Hide the mouse cursor and prevent the mouse from leaving the window.
     window.set_exclusive_mouse(True)
     setup()

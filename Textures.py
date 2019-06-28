@@ -12,11 +12,12 @@ class Textures:
 
         for texture in json.load(open(TEXTURE_CONFIG_FILE)).items():
             name = texture[0]
-            texture_coords = texture[1]["texture_coords"]
-            indestructible = texture[1]["indestructible"]
-            print(name, indestructible)
+            settings = texture[1]
+            texture_coords = settings["texture_coords"]
+            mining_level = settings["mining_level"]
+            damage = settings["damage"]
             top,bottom,side = texture_coords
-            self.textures[name] = Texture(self.get_texture_coordinates(top, bottom, side), indestructible)
+            self.textures[name] = Texture(name, self.get_texture_coordinates(top, bottom, side), mining_level, damage)
 
         self.indestructible_resources = [resource for resource in self.textures.values() if resource.indestructible]
 
@@ -25,8 +26,6 @@ class Textures:
         self.resource_levels = [self.textures["dirt"], self.textures["stone"], self.textures["bedrock"]]
 
         self.wall_resource = self.textures["bedrock"]
-
-        self.inventory = [self.textures["sand"], self.textures["stone"], self.textures["brick"]]
 
         self.faces = [
             (0, 1, 0),
